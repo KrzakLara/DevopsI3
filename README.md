@@ -174,6 +174,256 @@ podman run -d -p 5000:5000 flask-app
 
 This will start the Flask application, and it will be accessible on port 5000 of your host machine.
 
+
+
+
+
+
+
+
+
+The same thing as that, except: Deploy a Joomla container and a MySQL container using Podman
+
+
+## 1. Deploy a WordPress container and a MySQL container using Podman
+
+Ensure that the WordPress container can communicate with the MySQL container. Use the following environment variables for the MySQL container:
+
+- MYSQL_ROOT_PASSWORD=my-secret-pw
+- MYSQL_DATABASE=wordpress
+- MYSQL_USER=wp_user
+- MYSQL_PASSWORD=wp_password
+
+Configure WordPress container environment variables as needed.
+
+### Solution:
+
+#### Preparation and Deployment Steps
+
+**Update Your System:**
+
+Install Podman:
+sudo yum install -y podman
+
+Verify Podman Installation:
+podman --version
+
+Enable User Namespaces (Optional):
+echo "user.max_user_namespaces = 15000" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
+Ensure Podman Has Access to User Home Directories (if running in rootless mode):
+sudo setsebool -P use_nfs_home_dirs 1
+
+Pull the Required Images:
+podman pull mysql:5.7
+podman pull wordpress:php7.4-apache
+
+Create a Volume for MySQL Data:
+podman volume create mysql_data
+
+Network Configuration (if needed):
+sudo firewall-cmd --zone=public --add-port=8080/tcp --permanent
+sudo firewall-cmd --reload
+
+Deploy Containers
+
+Run MySQL Container with Volume:
+podman run -d --name mysql \
+  -e MYSQL_ROOT_PASSWORD=my-secret-pw \
+  -e MYSQL_DATABASE=wordpress \
+  -e MYSQL_USER=wp_user \
+  -e MYSQL_PASSWORD=wp_password \
+  -v mysql_data:/var/lib/mysql \
+  mysql:5.7
+  
+Run WordPress Container:
+podman run -d --name wordpress \
+  --env WORDPRESS_DB_HOST=mysql \
+  --env WORDPRESS_DB_USER=wp_user \
+  --env WORDPRESS_DB_PASSWORD=wp_password \
+  --env WORDPRESS_DB_NAME=wordpress \
+  -p 8080:80 \
+  --network podman \
+  wordpress:php7.4-apache
+
+  
+Deploy a Ghost container and a MySQL container using Podman
+Ensure that the Ghost container can communicate with the MySQL container. Use the following environment variables for the MySQL container:
+
+MYSQL_ROOT_PASSWORD=my-secret-pw
+MYSQL_DATABASE=ghost
+MYSQL_USER=ghost_user
+MYSQL_PASSWORD=ghost_password
+Configure Ghost container environment variables as needed.
+
+Use a container volume to persist the data of the Ghost container. Ensure that the Ghost data is stored in a volume named ghost_data.
+
+Solution:
+Preparation and Deployment Steps
+
+Update Your System:
+sudo yum update -y
+
+Install Podman:
+sudo yum install -y podman
+
+Verify Podman Installation:
+podman --version
+
+Enable User Namespaces (Optional):
+echo "user.max_user_namespaces = 15000" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
+Ensure Podman Has Access to User Home Directories (if running in rootless mode):
+sudo setsebool -P use_nfs_home_dirs 1
+
+Pull the Required Images:
+podman pull mysql:8
+podman pull ghost:latest
+
+Create a Volume for Ghost Data:
+podman volume create ghost_data
+
+Network Configuration (if needed):
+sudo firewall-cmd --zone=public --add-port=2368/tcp --permanent
+sudo firewall-cmd --reload
+
+Deploy Containers
+
+Run MySQL Container with Volume:
+podman run -d --name mysql \
+  -e MYSQL_ROOT_PASSWORD=my-secret-pw \
+  -e MYSQL_DATABASE=ghost \
+  -e MYSQL_USER=ghost_user \
+  -e MYSQL_PASSWORD=ghost_password \
+  -v mysql_data:/var/lib/mysql \
+  mysql:8
+  
+Run Ghost Container:
+podman run -d --name ghost \
+  --env database__client=mysql \
+  --env database__connection__host=mysql \
+  --env database__connection__user=ghost_user \
+  --env database__connection__password=ghost_password \
+  --env database__connection__database=ghost \
+  -v ghost_data:/var/lib/ghost/content \
+  -p 2368:2368 \
+  --network podman \
+  ghost:latest
+
+  
+3. Deploy a Joomla container and a MySQL container using Podman
+The other group had MySQL with Joomla. There is a problem since the mentioned MySQL version is not supported for the Joomla version that is required. Ensure you use a compatible MySQL version for Joomla.
+
+Ensure that the Joomla container can communicate with the MySQL container. Use the following environment variables for the MySQL container:
+
+MYSQL_ROOT_PASSWORD=my-secret-pw
+MYSQL_DATABASE=joomla
+MYSQL_USER=joomla_user
+MYSQL_PASSWORD=joomla_password
+Configure Joomla container environment variables as needed.
+
+Use a container volume to persist the data of the Joomla container. Ensure that the Joomla data is stored in a volume named joomla_data.
+
+Solution:
+Preparation and Deployment Steps
+
+Update Your System:
+sudo yum update -y
+
+Install Podman:
+sudo yum install -y podman
+
+Verify Podman Installation:
+podman --version
+
+Enable User Namespaces (Optional):
+echo "user.max_user_namespaces = 15000" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
+Ensure Podman Has Access to User Home Directories (if running in rootless mode):
+sudo setsebool -P use_nfs_home_dirs 1
+
+Pull the Required Images:
+podman pull mysql:5.7
+podman pull joomla:latest
+
+Create a Volume for Joomla Data:
+podman volume create joomla_data
+
+Network Configuration (if needed):
+sudo firewall-cmd --zone=public --add-port=8080/tcp --permanent
+sudo firewall-cmd --reload
+
+Deploy Containers
+
+Run MySQL Container with Volume:
+podman run -d --name mysql \
+  -e MYSQL_ROOT_PASSWORD=my-secret-pw \
+  -e MYSQL_DATABASE=joomla \
+  -e MYSQL_USER=joomla_user \
+  -e MYSQL_PASSWORD=joomla_password \
+  -v mysql_data:/var/lib/mysql \
+  mysql:5.7
+  
+Run Joomla Container:
+podman run -d --name joomla \
+  --env JOOMLA_DB_HOST=mysql \
+  --env JOOMLA_DB_USER=joomla_user \
+  --env JOOMLA_DB_PASSWORD=joomla_password \
+  --env JOOMLA_DB_NAME=joomla \
+  -p 8080:80 \
+  --network podman \
+  joomla:latest
+
+  
+Flask Application Dockerfile
+This section provides the Dockerfile to create a container image that runs a Python Flask application.
+
+# Use the official python:3.11 image as the base image
+FROM python:3.11
+
+# Set the working directory to /app
+WORKDIR /app
+
+# Copy the requirements.txt file to the /app directory
+COPY requirements.txt /app
+
+# Install the dependencies listed in the requirements.txt file
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the application code from the current directory to the /app directory
+COPY . /app
+
+# Run the Flask application at startup
+CMD ["python", "app.py"]
+
+
+Solution for Flask Application
+Preparation and Deployment Steps
+
+Update Your System:
+sudo yum update -y
+
+Install Podman:
+sudo yum install -y podman
+
+Verify Podman Installation:
+podman --version
+
+Create a Dockerfile in your project directory with the above content.
+
+Build the Docker image:
+podman build -t flask-app .
+
+Run the Flask application container:
+podman run -d -p 5000:5000 flask-app
+
+
+This will start the Flask application, and it will be accessible on port 5000 of your host machine.
+
+
 ____________________________________________________________________________________________________________________________________________________________________________
 
 
