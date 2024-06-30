@@ -1,17 +1,21 @@
 # DevopsI3
-i3
-1. Deploy a Woordpress cotainer and a mysql container using a podman. Ensure that the wordpress container can communicate with the mysql container, use the following environmnet variables for the mysql container: 
-MYSQL_ROOT_PASSWORD:my-secret-pw
-MYSQL_DATABASE=wordpress
-MYSQL_USER=wp_user
-MYSQL_PASSWORD=wp_password
 
-Configure wordpress container environment variables as needed.
+## 1. Deploy a WordPress container and a MySQL container using Podman
 
--Solution:
+Ensure that the WordPress container can communicate with the MySQL container. Use the following environment variables for the MySQL container:
 
-Preparation and Deployment Steps
-Update Your System:
+- MYSQL_ROOT_PASSWORD=my-secret-pw
+- MYSQL_DATABASE=wordpress
+- MYSQL_USER=wp_user
+- MYSQL_PASSWORD=wp_password
+
+Configure WordPress container environment variables as needed.
+
+### Solution:
+
+#### Preparation and Deployment Steps
+
+**Update Your System:**
 sudo yum update -y
 
 Install Podman:
@@ -38,59 +42,7 @@ Network Configuration (if needed):
 sudo firewall-cmd --zone=public --add-port=8080/tcp --permanent
 sudo firewall-cmd --reload
 
-Deploy Containers
-Run MySQL Container with Volume:
 
-podman run -d --name mysql \
-  -e MYSQL_ROOT_PASSWORD=my-secret-pw \
-  -e MYSQL_DATABASE=wordpress \
-  -e MYSQL_USER=wp_user \
-  -e MYSQL_PASSWORD=wp_password \
-  -v mysql_data:/var/lib/mysql \
-  mysql:5.7
-Run WordPress Container:
-
-podman run -d --name wordpress \
-  --env WORDPRESS_DB_HOST=mysql \
-  --env WORDPRESS_DB_USER=wp_user \
-  --env WORDPRESS_DB_PASSWORD=wp_password \
-  --env WORDPRESS_DB_NAME=wordpress \
-  -p 8080:80 \
-  --link mysql:mysql \
-  wordpress:php7.4-apache
-
-
-
-2. Use a container volume to presist the data of the mysql container. ensure that the mysql data is stored in a volume name 'mysql_data'
-
-Preparation and Deployment Steps
-Update Your System:
-sudo yum update -y
-
-Install Podman:
-sudo yum install -y podman
-
-Verify Podman Installation:
-podman --version
-
-Enable User Namespaces (Optional):
-echo "user.max_user_namespaces = 15000" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-
-Ensure Podman Has Access to User Home Directories (if running in rootless mode):
-Copy code
-sudo setsebool -P use_nfs_home_dirs 1
-
-Pull the Required Images:
-podman pull mysql:5.7
-podman pull wordpress:php7.4-apache
-
-Create a Volume for MySQL Data:
-podman volume create mysql_data
-
-Network Configuration (if needed):
-sudo firewall-cmd --zone=public --add-port=8080/tcp --permanent
-sudo firewall-cmd --reload
 Deploy Containers
 
 Run MySQL Container with Volume:
@@ -102,74 +54,125 @@ podman run -d --name mysql \
   -v mysql_data:/var/lib/mysql \
   mysql:5.7
   
-Run WordPress Container:e
+Run WordPress Container:
 podman run -d --name wordpress \
   --env WORDPRESS_DB_HOST=mysql \
   --env WORDPRESS_DB_USER=wp_user \
   --env WORDPRESS_DB_PASSWORD=wp_password \
   --env WORDPRESS_DB_NAME=wordpress \
   -p 8080:80 \
-  --link mysql:mysql \
+  --network podman \
   wordpress:php7.4-apache
-____________________________________________________________________________________________________________________________________________________________________________
-6. 
-
-Write a Containerfile/Dockerfile which takes the official Ubuntu base image, installs apache2, and sets the default command to start apache2. It should set the environment variable STUDENT to your username and surname. Port 80 should be exposed. Bear in mind that Ubuntu uses apt and apt-get to manage packages. Save it as a file called LO3_D.
 
 
-Dockerfile Content
-Create a file named LO3_D with the following content:
+  
+2. Deploy a Ghost container and a MySQL container using Podman
+Ensure that the Ghost container can communicate with the MySQL container. Use the following environment variables for the MySQL container:
 
-# Use the official Ubuntu base image
-FROM ubuntu:latest
+MYSQL_ROOT_PASSWORD=my-secret-pw
+MYSQL_DATABASE=ghost
+MYSQL_USER=ghost_user
+MYSQL_PASSWORD=ghost_password
+Configure Ghost container environment variables as needed.
 
-# Set the environment variable STUDENT to your username and surname
-ENV STUDENT=your_username your_surname
+Use a container volume to persist the data of the Ghost container. Ensure that the Ghost data is stored in a volume named ghost_data.
 
-# Update the package list and install apache2
-RUN apt-get update && \
-    apt-get install -y apache2 && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+Solution:
+Preparation and Deployment Steps
 
-# Expose port 80
-EXPOSE 80
+Update Your System:
+sudo yum update -y
 
-# Set the default command to start apache2 in the foreground
-CMD ["apache2ctl", "-D", "FOREGROUND"]
-Explanation
-Base Image:
+Install Podman:
+sudo yum install -y podman
 
-FROM ubuntu:latest: This line specifies the base image for the container, which is the latest official Ubuntu image.
-Environment Variable:
+Verify Podman Installation:
+podman --version
 
-ENV STUDENT=your_username your_surname: This line sets the environment variable STUDENT to your username and surname. Replace your_username your_surname with your actual username and surname.
-Install Apache2:
+Enable User Namespaces (Optional):
+echo "user.max_user_namespaces = 15000" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
 
-RUN apt-get update && apt-get install -y apache2 && apt-get clean && rm -rf /var/lib/apt/lists/*: This line updates the package list, installs Apache2, cleans up the package cache, and removes temporary files to reduce the image size.
-Expose Port:
+Ensure Podman Has Access to User Home Directories (if running in rootless mode):
+sudo setsebool -P use_nfs_home_dirs 1
 
-EXPOSE 80: This line exposes port 80, which is the default port for HTTP traffic and will be used by Apache2.
-Default Command:
+Pull the Required Images:
+podman pull mysql:8
+podman pull ghost:latest
 
-CMD ["apache2ctl", "-D", "FOREGROUND"]: This line sets the default command to start Apache2 in the foreground, ensuring the container keeps running and serves web content.
-Save the File
-Save the above content in a file named LO3_D.
+Create a Volume for Ghost Data:
+podman volume create ghost_data
 
-Usage
-To build and run the container, you can use the following commands:
+Network Configuration (if needed):
+sudo firewall-cmd --zone=public --add-port=2368/tcp --permanent
+sudo firewall-cmd --reload
 
-Build the Container:
 
-bash
-Copy code
-podman build -t my_apache_image -f LO3_D
-Run the Container:
+Deploy Containers
 
-bash
-Copy code
-podman run -d -p 8080:80 my_apache_image
-This will build an image named my_apache_image and run a container from it, mapping port 8080 on your host to port 80 in the container. You can then access the Apache server by navigating to http://localhost:8080 in your web browser.
+Run MySQL Container with Volume:
+podman run -d --name mysql \
+  -e MYSQL_ROOT_PASSWORD=my-secret-pw \
+  -e MYSQL_DATABASE=ghost \
+  -e MYSQL_USER=ghost_user \
+  -e MYSQL_PASSWORD=ghost_password \
+  -v mysql_data:/var/lib/mysql \
+  mysql:8
+  
+Run Ghost Container:
+podman run -d --name ghost \
+  --env database__client=mysql \
+  --env database__connection__host=mysql \
+  --env database__connection__user=ghost_user \
+  --env database__connection__password=ghost_password \
+  --env database__connection__database=ghost \
+  -v ghost_data:/var/lib/ghost/content \
+  -p 2368:2368 \
+  --network podman \
+  ghost:latest
+  
+Flask Application Dockerfile
+This section provides the Dockerfile to create a container image that runs a Python Flask application.
+
+# Use the official python:3.11 image as the base image
+FROM python:3.11
+
+# Set the working directory to /app
+WORKDIR /app
+
+# Copy the requirements.txt file to the /app directory
+COPY requirements.txt /app
+
+# Install the dependencies listed in the requirements.txt file
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the application code from the current directory to the /app directory
+COPY . /app
+
+# Run the Flask application at startup
+CMD ["python", "app.py"]
+
+Solution for Flask Application
+Preparation and Deployment Steps
+
+Update Your System:
+sudo yum update -y
+
+Install Podman:
+sudo yum install -y podman
+
+Verify Podman Installation:
+podman --version
+
+Create a Dockerfile in your project directory with the above content.
+
+Build the Docker image:
+podman build -t flask-app .
+
+Run the Flask application container:
+podman run -d -p 5000:5000 flask-app
+
+This will start the Flask application, and it will be accessible on port 5000 of your host machine.
 
 ____________________________________________________________________________________________________________________________________________________________________________
 
