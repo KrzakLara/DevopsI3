@@ -1,6 +1,6 @@
 # DevopsI3
 i3
-1. Deploy a Woordpress cotainer and a mysql container using apodman . ensure that the wordpress container can communicate with the mysql container, use the following environmnet variables for the mysql container: 
+1. Deploy a Woordpress cotainer and a mysql container using a podman. Ensure that the wordpress container can communicate with the mysql container, use the following environmnet variables for the mysql container: 
 MYSQL_ROOT_PASSWORD:my-secret-pw
 MYSQL_DATABASE=wordpress
 MYSQL_USER=wp_user
