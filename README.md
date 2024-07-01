@@ -137,166 +137,45 @@ Use a container volume to persist the data of the Joomla container. Ensure that 
 ### Solution:
 
 To deploy a Joomla container and a MySQL container using Podman, and ensure compatibility and communication between them, follow these steps:
-Create a user-defined network:
 
-sh
-Copy code
+1.Create a user-defined network:
 podman network create joomla_network
-Remove any existing containers:
 
-sh
-Copy code
+2.Remove any existing containers:
 podman rm -f mysql
 podman rm -f joomla
-Create a volume for Joomla data:
 
-sh
-Copy code
+3.Create a volume for Joomla data:
 podman volume create joomla_data
+
 Deploy the MySQL Container:
 
-To ensure compatibility, we'll use MySQL 5.7, which is widely compatible with Joomla. Deploy the MySQL container with the following environment variables:
+4.To ensure compatibility, we'll use MySQL 5.7, which is widely compatible with Joomla. Deploy the MySQL container with the following environment variables:
 
-sh
-Copy code
 podman run --name mysql --network joomla_network -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_DATABASE=joomla -e MYSQL_USER=joomla_user -e MYSQL_PASSWORD=joomla_password -d docker.io/library/mysql:5.7
+
 Deploy the Joomla Container:
 
-Deploy the Joomla container with the necessary environment variables and persistent storage:
-
-sh
-Copy code
+5.Deploy the Joomla container with the necessary environment variables and persistent storage:
 podman run --name joomla --network joomla_network -e JOOMLA_DB_HOST=mysql -e JOOMLA_DB_USER=joomla_user -e JOOMLA_DB_PASSWORD=joomla_password -e JOOMLA_DB_NAME=joomla -v joomla_data:/var/www/html -p 8081:80 -d docker.io/library/joomla:latest
+
 Verify Deployment:
 
-Check the running containers:
-
-sh
-Copy code
+6.Check the running containers:
 podman ps
+
+
 You should see both the MySQL and Joomla containers running.
 
-Access Joomla:
-
+7.Access Joomla:
 Open your web browser and navigate to:
 
-arduino
-Copy code
 http://localhost:8081
-Follow the Joomla Setup Instructions
+
+8.Follow the Joomla Setup Instructions
 
   
 
-  
-3. Deploy a Joomla container and a MySQL container using Podman
-The other group had MySQL with Joomla. There is a problem since the mentioned MySQL version is not supported for the Joomla version that is required. Ensure you use a compatible MySQL version for Joomla.
-
-Ensure that the Joomla container can communicate with the MySQL container. Use the following environment variables for the MySQL container:
-
-MYSQL_ROOT_PASSWORD=my-secret-pw
-MYSQL_DATABASE=joomla
-MYSQL_USER=joomla_user
-MYSQL_PASSWORD=joomla_password
-Configure Joomla container environment variables as needed.
-
-Use a container volume to persist the data of the Joomla container. Ensure that the Joomla data is stored in a volume named joomla_data.
-
-Solution:
-Preparation and Deployment Steps
-
-Update Your System:
-sudo yum update -y
-
-Install Podman:
-sudo yum install -y podman
-
-Verify Podman Installation:
-podman --version
-
-Enable User Namespaces (Optional):
-echo "user.max_user_namespaces = 15000" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-
-Ensure Podman Has Access to User Home Directories (if running in rootless mode):
-sudo setsebool -P use_nfs_home_dirs 1
-
-Pull the Required Images:
-podman pull mysql:5.7
-podman pull joomla:latest
-
-Create a Volume for Joomla Data:
-podman volume create joomla_data
-
-Network Configuration (if needed):
-sudo firewall-cmd --zone=public --add-port=8080/tcp --permanent
-sudo firewall-cmd --reload
-
-Deploy Containers
-
-Run MySQL Container with Volume:
-podman run -d --name mysql \
-  -e MYSQL_ROOT_PASSWORD=my-secret-pw \
-  -e MYSQL_DATABASE=joomla \
-  -e MYSQL_USER=joomla_user \
-  -e MYSQL_PASSWORD=joomla_password \
-  -v mysql_data:/var/lib/mysql \
-  mysql:5.7
-  
-Run Joomla Container:
-podman run -d --name joomla \
-  --env JOOMLA_DB_HOST=mysql \
-  --env JOOMLA_DB_USER=joomla_user \
-  --env JOOMLA_DB_PASSWORD=joomla_password \
-  --env JOOMLA_DB_NAME=joomla \
-  -p 8080:80 \
-  --network podman \
-  joomla:latest
-
-  
-Flask Application Dockerfile
-This section provides the Dockerfile to create a container image that runs a Python Flask application.
-
-# Use the official python:3.11 image as the base image
-FROM python:3.11
-
-# Set the working directory to /app
-WORKDIR /app
-
-# Copy the requirements.txt file to the /app directory
-COPY requirements.txt /app
-
-# Install the dependencies listed in the requirements.txt file
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the application code from the current directory to the /app directory
-COPY . /app
-
-# Run the Flask application at startup
-CMD ["python", "app.py"]
-
-
-Solution for Flask Application
-Preparation and Deployment Steps
-
-Update Your System:
-sudo yum update -y
-
-Install Podman:
-sudo yum install -y podman
-
-Verify Podman Installation:
-podman --version
-
-Create a Dockerfile in your project directory with the above content.
-
-Build the Docker image:
-podman build -t flask-app .
-
-Run the Flask application container:
-podman run -d -p 5000:5000 flask-app
-
-
-This will start the Flask application, and it will be accessible on port 5000 of your host machine.
 
 
 ____________________________________________________________________________________________________________________________________________________________________________
