@@ -84,7 +84,7 @@ Configure Ghost container environment variables as needed.
 
 Use a container volume to persist the data of the Ghost container. Ensure that the Ghost data is stored in a volume named ghost_data.
 
-#Solution:
+### Solution:
 
  Create a user-defined network
 podman network create ghost_network
