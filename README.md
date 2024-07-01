@@ -45,56 +45,31 @@ Configure WordPress container environment variables as needed.
 
 ### Solution:
 
-#### Preparation and Deployment Steps
+Check if the network exists:
+podman network ls
 
-**Update Your System:**
-sudo yum update -y
+If wordpress_network exists, proceed. If not, create it:
+podman network create wordpress_network
 
-Install Podman:
-sudo yum install -y podman
+Remove existing containers:
 
-Verify Podman Installation:
-podman --version
+podman rm -f mysql
+podman rm -f wordpress
 
-Enable User Namespaces (Optional):
-echo "user.max_user_namespaces = 15000" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
+Deploy the MySQL container:
 
-Ensure Podman Has Access to User Home Directories (if running in rootless mode):
-sudo setsebool -P use_nfs_home_dirs 1
+podman run --name mysql --network wordpress_network -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_DATABASE=wordpress -e MYSQL_USER=wp_user -e MYSQL_PASSWORD=wp_password -d docker.io/library/mysql:5.7
 
-Pull the Required Images:
-podman pull mysql:5.7
-podman pull wordpress:php7.4-apache
+Deploy the WordPress container:
 
-Create a Volume for MySQL Data:
-podman volume create mysql_data
+podman run --name wordpress --network wordpress_network -e WORDPRESS_DB_HOST=mysql -e WORDPRESS_DB_USER=wp_user -e WORDPRESS_DB_PASSWORD=wp_password -e WORDPRESS_DB_NAME=wordpress -p 8080:80 -d wordpress:php7.4-apache
 
-Network Configuration (if needed):
-sudo firewall-cmd --zone=public --add-port=8080/tcp --permanent
-sudo firewall-cmd --reload
+Verify deployment:
 
+podman ps
 
-Deploy Containers
-
-Run MySQL Container with Volume:
-podman run -d --name mysql \
-  -e MYSQL_ROOT_PASSWORD=my-secret-pw \
-  -e MYSQL_DATABASE=wordpress \
-  -e MYSQL_USER=wp_user \
-  -e MYSQL_PASSWORD=wp_password \
-  -v mysql_data:/var/lib/mysql \
-  mysql:5.7
-  
-Run WordPress Container:
-podman run -d --name wordpress \
-  --env WORDPRESS_DB_HOST=mysql \
-  --env WORDPRESS_DB_USER=wp_user \
-  --env WORDPRESS_DB_PASSWORD=wp_password \
-  --env WORDPRESS_DB_NAME=wordpress \
-  -p 8080:80 \
-  --network podman \
-  wordpress:php7.4-apache
+Access WordPress:
+Open your web browser and navigate to http://localhost:8080 and follow the WordPress setup instructions.
 
 
   
@@ -109,104 +84,38 @@ Configure Ghost container environment variables as needed.
 
 Use a container volume to persist the data of the Ghost container. Ensure that the Ghost data is stored in a volume named ghost_data.
 
-Solution:
-Preparation and Deployment Steps
+#Solution:
 
-Update Your System:
-sudo yum update -y
+ Create a user-defined network
+podman network create ghost_network
 
-Install Podman:
-sudo yum install -y podman
+2. Remove existing containers (if any)
+podman rm -f mysql
+podman rm -f ghost
 
-Verify Podman Installation:
-podman --version
-
-Enable User Namespaces (Optional):
-echo "user.max_user_namespaces = 15000" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-
-Ensure Podman Has Access to User Home Directories (if running in rootless mode):
-sudo setsebool -P use_nfs_home_dirs 1
-
-Pull the Required Images:
-podman pull mysql:8
-podman pull ghost:latest
-
-Create a Volume for Ghost Data:
+4. Create a volume for Ghost data
 podman volume create ghost_data
 
-Network Configuration (if needed):
-sudo firewall-cmd --zone=public --add-port=2368/tcp --permanent
-sudo firewall-cmd --reload
+6. Deploy the MySQL container
+podman run --name mysql --network ghost_network -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_DATABASE=ghost -e MYSQL_USER=ghost_user -e MYSQL_PASSWORD=ghost_password -d docker.io/library/mysql:5.7
 
+8. Deploy the Ghost container
+First, pull the Ghost image from Docker Hub:
+podman pull docker.io/library/ghost:latest
 
-Deploy Containers
+Then, run the Ghost container using this image:
+podman run --name ghost --network ghost_network -e database__client=mysql -e database__connection__host=mysql -e database__connection__user=ghost_user -e database__connection__password=ghost_password -e database__connection__database=ghost -v ghost_data:/var/lib/ghost/content -p 2368:2368 -d docker.io/library/ghost:latest
 
-Run MySQL Container with Volume:
-podman run -d --name mysql \
-  -e MYSQL_ROOT_PASSWORD=my-secret-pw \
-  -e MYSQL_DATABASE=ghost \
-  -e MYSQL_USER=ghost_user \
-  -e MYSQL_PASSWORD=ghost_password \
-  -v mysql_data:/var/lib/mysql \
-  mysql:8
-  
-Run Ghost Container:
-podman run -d --name ghost \
-  --env database__client=mysql \
-  --env database__connection__host=mysql \
-  --env database__connection__user=ghost_user \
-  --env database__connection__password=ghost_password \
-  --env database__connection__database=ghost \
-  -v ghost_data:/var/lib/ghost/content \
-  -p 2368:2368 \
-  --network podman \
-  ghost:latest
-  
-Flask Application Dockerfile
-This section provides the Dockerfile to create a container image that runs a Python Flask application.
+6. Verify Deployment
+Check the running containers:
+podman ps
 
-# Use the official python:3.11 image as the base image
-FROM python:3.11
+You should see both the MySQL and Ghost containers running.
 
-# Set the working directory to /app
-WORKDIR /app
-
-# Copy the requirements.txt file to the /app directory
-COPY requirements.txt /app
-
-# Install the dependencies listed in the requirements.txt file
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the application code from the current directory to the /app directory
-COPY . /app
-
-# Run the Flask application at startup
-CMD ["python", "app.py"]
-
-Solution for Flask Application
-Preparation and Deployment Steps
-
-Update Your System:
-sudo yum update -y
-
-Install Podman:
-sudo yum install -y podman
-
-Verify Podman Installation:
-podman --version
-
-Create a Dockerfile in your project directory with the above content.
-
-Build the Docker image:
-podman build -t flask-app .
-
-Run the Flask application container:
-podman run -d -p 5000:5000 flask-app
-
-This will start the Flask application, and it will be accessible on port 5000 of your host machine.
-
-
+8. Access Ghost
+Open your web browser and navigate to:
+http://localhost:2368
+Follow the Ghost Setup Instructions
 
 
 
@@ -217,132 +126,66 @@ This will start the Flask application, and it will be accessible on port 5000 of
 The same thing as that, except: Deploy a Joomla container and a MySQL container using Podman
 
 
-## 1. Deploy a WordPress container and a MySQL container using Podman
+## 1.  Deploy a Joomla container and a MySQL container using Podman The other group had MySQL with Joomla. There is a problem since the mentioned MySQL version is not supported for the Joomla version that is required. Ensure you use a compatible MySQL version for Joomla.
 
-Ensure that the WordPress container can communicate with the MySQL container. Use the following environment variables for the MySQL container:
+Ensure that the Joomla container can communicate with the MySQL container. Use the following environment variables for the MySQL container:
 
-- MYSQL_ROOT_PASSWORD=my-secret-pw
-- MYSQL_DATABASE=wordpress
-- MYSQL_USER=wp_user
-- MYSQL_PASSWORD=wp_password
+MYSQL_ROOT_PASSWORD=my-secret-pw MYSQL_DATABASE=joomla MYSQL_USER=joomla_user MYSQL_PASSWORD=joomla_password Configure Joomla container environment variables as needed.
 
-Configure WordPress container environment variables as needed.
+Use a container volume to persist the data of the Joomla container. Ensure that the Joomla data is stored in a volume named joomla_data.
 
 ### Solution:
 
-#### Preparation and Deployment Steps
+To deploy a Joomla container and a MySQL container using Podman, and ensure compatibility and communication between them, follow these steps:
+Create a user-defined network:
 
-**Update Your System:**
+sh
+Copy code
+podman network create joomla_network
+Remove any existing containers:
 
-Install Podman:
-sudo yum install -y podman
+sh
+Copy code
+podman rm -f mysql
+podman rm -f joomla
+Create a volume for Joomla data:
 
-Verify Podman Installation:
-podman --version
+sh
+Copy code
+podman volume create joomla_data
+Deploy the MySQL Container:
 
-Enable User Namespaces (Optional):
-echo "user.max_user_namespaces = 15000" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
+To ensure compatibility, we'll use MySQL 5.7, which is widely compatible with Joomla. Deploy the MySQL container with the following environment variables:
 
-Ensure Podman Has Access to User Home Directories (if running in rootless mode):
-sudo setsebool -P use_nfs_home_dirs 1
+sh
+Copy code
+podman run --name mysql --network joomla_network -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_DATABASE=joomla -e MYSQL_USER=joomla_user -e MYSQL_PASSWORD=joomla_password -d docker.io/library/mysql:5.7
+Deploy the Joomla Container:
 
-Pull the Required Images:
-podman pull mysql:5.7
-podman pull wordpress:php7.4-apache
+Deploy the Joomla container with the necessary environment variables and persistent storage:
 
-Create a Volume for MySQL Data:
-podman volume create mysql_data
+sh
+Copy code
+podman run --name joomla --network joomla_network -e JOOMLA_DB_HOST=mysql -e JOOMLA_DB_USER=joomla_user -e JOOMLA_DB_PASSWORD=joomla_password -e JOOMLA_DB_NAME=joomla -v joomla_data:/var/www/html -p 8081:80 -d docker.io/library/joomla:latest
+Verify Deployment:
 
-Network Configuration (if needed):
-sudo firewall-cmd --zone=public --add-port=8080/tcp --permanent
-sudo firewall-cmd --reload
+Check the running containers:
 
-Deploy Containers
+sh
+Copy code
+podman ps
+You should see both the MySQL and Joomla containers running.
 
-Run MySQL Container with Volume:
-podman run -d --name mysql \
-  -e MYSQL_ROOT_PASSWORD=my-secret-pw \
-  -e MYSQL_DATABASE=wordpress \
-  -e MYSQL_USER=wp_user \
-  -e MYSQL_PASSWORD=wp_password \
-  -v mysql_data:/var/lib/mysql \
-  mysql:5.7
+Access Joomla:
+
+Open your web browser and navigate to:
+
+arduino
+Copy code
+http://localhost:8081
+Follow the Joomla Setup Instructions
+
   
-Run WordPress Container:
-podman run -d --name wordpress \
-  --env WORDPRESS_DB_HOST=mysql \
-  --env WORDPRESS_DB_USER=wp_user \
-  --env WORDPRESS_DB_PASSWORD=wp_password \
-  --env WORDPRESS_DB_NAME=wordpress \
-  -p 8080:80 \
-  --network podman \
-  wordpress:php7.4-apache
-
-  
-Deploy a Ghost container and a MySQL container using Podman
-Ensure that the Ghost container can communicate with the MySQL container. Use the following environment variables for the MySQL container:
-
-MYSQL_ROOT_PASSWORD=my-secret-pw
-MYSQL_DATABASE=ghost
-MYSQL_USER=ghost_user
-MYSQL_PASSWORD=ghost_password
-Configure Ghost container environment variables as needed.
-
-Use a container volume to persist the data of the Ghost container. Ensure that the Ghost data is stored in a volume named ghost_data.
-
-Solution:
-Preparation and Deployment Steps
-
-Update Your System:
-sudo yum update -y
-
-Install Podman:
-sudo yum install -y podman
-
-Verify Podman Installation:
-podman --version
-
-Enable User Namespaces (Optional):
-echo "user.max_user_namespaces = 15000" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-
-Ensure Podman Has Access to User Home Directories (if running in rootless mode):
-sudo setsebool -P use_nfs_home_dirs 1
-
-Pull the Required Images:
-podman pull mysql:8
-podman pull ghost:latest
-
-Create a Volume for Ghost Data:
-podman volume create ghost_data
-
-Network Configuration (if needed):
-sudo firewall-cmd --zone=public --add-port=2368/tcp --permanent
-sudo firewall-cmd --reload
-
-Deploy Containers
-
-Run MySQL Container with Volume:
-podman run -d --name mysql \
-  -e MYSQL_ROOT_PASSWORD=my-secret-pw \
-  -e MYSQL_DATABASE=ghost \
-  -e MYSQL_USER=ghost_user \
-  -e MYSQL_PASSWORD=ghost_password \
-  -v mysql_data:/var/lib/mysql \
-  mysql:8
-  
-Run Ghost Container:
-podman run -d --name ghost \
-  --env database__client=mysql \
-  --env database__connection__host=mysql \
-  --env database__connection__user=ghost_user \
-  --env database__connection__password=ghost_password \
-  --env database__connection__database=ghost \
-  -v ghost_data:/var/lib/ghost/content \
-  -p 2368:2368 \
-  --network podman \
-  ghost:latest
 
   
 3. Deploy a Joomla container and a MySQL container using Podman
